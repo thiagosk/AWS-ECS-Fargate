@@ -8,12 +8,13 @@ Rubrica atingida: C+ (Ambiente funcionando com Fargate, ECS e documentação.)
 
 # Deploy de um container com AWS ECS e Fargate usando Terraform
 
-O AWS ECS é um serviço de orquestração de contêineres projetado para simplificar a implantação e o gerenciamento de aplicativos em contêineres na nuvem.
+O AWS ECS é um serviço projetado para simplificar a implantação e o gerenciamento de aplicativos em contêineres na nuvem.
 
 O AWS Fargate é um serviço que permite executar contêineres sem servidores, ou seja, permite a execução de contêineres sem a necessidade de provisionar ou gerenciar diretamente a infraestrutura.
 
-Logo, o conjunto desses dois serviços da AWS é uma solução completa para o gerenciamento e a execução de aplicativos em contêineres na nuvem.
+Logo, o conjunto desses dois serviços da AWS é uma ótima solução para o gerenciamento e a execução de aplicativos em contêineres na nuvem.
 
+Diagrama da arquiterura que será criada na AWS:
 ![image](https://github.com/thiagosk/AWS-ECS-Fargate/assets/71990438/b8421d4f-ab43-4f0a-b8a6-5266d35d7503)
   
 Este roteiro é dividido em 4 partes:
@@ -69,7 +70,9 @@ cat ~/.aws/credentials
 
 ## Parte 2: Criando AWS ECS e Fargate
 
-Crie uma pasta chamada *terraform*. E dentro desta pasta os arquivos de configuração *network.tf*, *provider.tf*, *security.tf*, *ecs.tf*, *output.tf* e *lb.tf*:
+Neste roteiro, como exemplo, iremos fazer deploy de um contêiner com uma aplicação simples de "Hello World", entretanto facilmente adaptado para qualquer contêiner que desejar rodar.
+
+Primeiramente, crie uma pasta chamada *terraform*. E dentro desta pasta os arquivos de configuração *network.tf*, *provider.tf*, *security.tf*, *ecs.tf*, *output.tf* e *lb.tf*:
 
 ```
 mkdir terraform
@@ -94,6 +97,10 @@ provider "aws" {
   region = "us-east-1"
 }
 ```
+
+Os recursos serão criados dentro de uma VPC, que basicamente é uma rede própria isolada na nuvem. Dentro desta rede, iremos criar 4 subredes, 2 privadas e 2 públicas. As subredes públicas terão os recursos que poderão ser acessados publicamente, como o load balancer, e nas privadas, os recursos que não precisam ser conectados a internet, como o serviço "Hello World" criado no cluster ECS.
+
+Para completar a parte de network, temos que adicionar os recursos de internet, roteador e gateway. Esses recursos basicamente farão a parte de comunicação das redes do VPC com as redes externas.
 
 Em *network.tf* adicione:
 
@@ -160,6 +167,14 @@ resource "aws_route_table_association" "private" {
 }
 ```
 
+Será necessário criar 2 grupos de segurança para controlar o tráfego entre redes. 
+
+Para o load balancer, será permitido a entrada de informações na porta 80, definido no bloco "ingress". 
+
+Já para a task da aplicação será permitido a entrada de trafégo na porta 3000, também definido em um bloco "ingress". Neste mesmo bloco também será adicionado o grupo de segurança do load balancer para permitir o trafégo que também usam esse grupo.
+
+Para ambos, as informações poder sair por qualquer porta, sem protocolo específico, definido nos blocos "engress".
+
 Em *security.tf* adicione:
 
 ```
@@ -202,6 +217,8 @@ resource "aws_security_group" "hello_world_task" {
 }
 ```
 
+Para o load balancer, criaremos esse recurso com o grupo de segurança criado anteriormente e o conectando a subnet pública. Criaremos também um target group e um load balancer listener, quando lincamos os dois, o target group diz ao load balancer para mandar o trafégo da porta 80 para o serviço do ECS (que ainda iremos criar).
+
 Em *lb.tf* adicione:
 
 ```
@@ -230,6 +247,12 @@ resource "aws_lb_listener" "hello_world" {
   }
 }
 ```
+
+Criaremos agora os recursos ECS. 
+
+Na task definiton definiremos como a aplicação deve rodar, no caso usando Fargate, e para isso precisamos também especificar o uso de CPU e memória. Na parte de definição do contêiner você pode escolher a imagem docker que quer rodar, neste roteiro foi utilizado uma imagem docker pública que devolve "Hello World!".
+
+NO serviço do ECS especificamos o *launch_type* que será Fargate. Neste bloco também especificamos que a task irá rodar em uma subnet privada, definido no bloco "network_configuration", e pode ser acessada por redes externas pelo load balancer, definido no bloco "load_balancer". Como o serviço não deve ser criado antes do load balancer, o load balancer listener é adicionando no atributo *depends_on*.
 
 Em *ecs.tf* adicione:
 
@@ -285,6 +308,8 @@ resource "aws_ecs_service" "hello_world" {
   depends_on = [aws_lb_listener.hello_world]
 }
 ```
+
+Para facilitar a vida, o terraform irá printar a URL do load balancer (sua aplicação) quando tudo estiver pronto. Está URL pode ser encontrada também no dashboard da AWS.
 
 Em *output.tf* adicione:
 
