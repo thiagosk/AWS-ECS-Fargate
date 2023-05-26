@@ -1,12 +1,6 @@
-#### PROJETO DE COMPUTAÇÃO EM NUVEM
-#### Insper - Computação em Nuvem - 2023.1
-#### Por Thiago Shiguero Kawahara
-
-Rubrica atingida: C+ (Ambiente funcionando com Fargate, ECS e documentação.)
-
----
-
 # Deploy de um container com AWS ECS e Fargate usando Terraform
+
+##### Por Thiago Shiguero Kawahara - 26/05/2023
 
 O AWS ECS é um serviço projetado para simplificar a implantação e o gerenciamento de aplicativos em contêineres na nuvem.
 
@@ -252,7 +246,7 @@ Criaremos agora os recursos ECS.
 
 Na task definiton definiremos como a aplicação deve rodar, no caso usando Fargate, e para isso precisamos também especificar o uso de CPU e memória. Na parte de definição do contêiner você pode escolher a imagem docker que quer rodar, neste roteiro foi utilizado uma imagem docker pública que devolve "Hello World!".
 
-NO serviço do ECS especificamos o *launch_type* que será Fargate. Neste bloco também especificamos que a task irá rodar em uma subnet privada, definido no bloco "network_configuration", e pode ser acessada por redes externas pelo load balancer, definido no bloco "load_balancer". Como o serviço não deve ser criado antes do load balancer, o load balancer listener é adicionando no atributo *depends_on*.
+No serviço do ECS especificamos o *launch_type* que será Fargate. Neste bloco também especificamos que a task irá rodar em uma subnet privada, definido no bloco "network_configuration", e pode ser acessada por redes externas pelo load balancer, definido no bloco "load_balancer". Como o serviço não deve ser criado antes do load balancer, o load balancer listener é adicionando no atributo *depends_on*.
 
 Em *ecs.tf* adicione:
 
